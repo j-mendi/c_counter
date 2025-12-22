@@ -1,115 +1,75 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Head Pat Counter</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        body {
-            background-color: #ffeef2;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-            margin: 0;
-            color: #ff8fa3;
-        }
-
-        .container {
-            background: white;
-            padding: 2rem;
-            border-radius: 30px;
-            box-shadow: 0 10px 25px rgba(255, 182, 193, 0.4);
-            text-align: center;
-            border: 4px solid #ffb6c1;
-        }
-
-        h1 {
-            font-size: 2rem;
-            margin-bottom: 10px;
-        }
-
-        .counter-display {
-            font-size: 5rem;
-            font-weight: bold;
-            margin: 20px 0;
-            color: #ff4d6d;
-        }
-
-        .pat-button {
-            background-color: #ff8fa3;
-            color: white;
-            border: none;
-            padding: 15px 30px;
-            font-size: 1.2rem;
-            border-radius: 50px;
-            cursor: pointer;
-            transition: transform 0.2s, background-color 0.2s;
-            display: none;
-            /* Hidden by default */
-        }
-
-        .pat-button:hover {
-            background-color: #ff4d6d;
-            transform: scale(1.05);
-        }
-
-        .pat-button:active {
-            transform: scale(0.95);
-        }
-
-        .admin-unlock {
-            margin-top: 20px;
-            font-size: 0.8rem;
-            color: #ffc2d1;
-            cursor: pointer;
-            text-decoration: underline;
-        }
+        /* (The cute CSS from before remains the same) */
+        body { background-color: #ffeef2; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; color: #ff8fa3; }
+        .container { background: white; padding: 2rem; border-radius: 30px; box-shadow: 0 10px 25px rgba(255,182,193,0.4); text-align: center; border: 4px solid #ffb6c1; }
+        .counter-display { font-size: 5rem; font-weight: bold; margin: 20px 0; color: #ff4d6d; transition: transform 0.1s; }
+        .pat-button { background-color: #ff8fa3; color: white; border: none; padding: 15px 30px; font-size: 1.2rem; border-radius: 50px; cursor: pointer; display: none; }
+        .admin-unlock { margin-top: 20px; font-size: 0.8rem; color: #ffc2d1; cursor: pointer; }
     </style>
 </head>
-
 <body>
 
     <div class="container">
         <h1>🌸 Head Pat Counter 🌸</h1>
-        <div class="counter-display" id="count">0</div>
-        <p>Current total of head pats given!</p>
-
+        <div class="counter-display" id="count">...</div>
+        <p>Total pats recorded in the cloud!</p>
         <button class="pat-button" id="patBtn" onclick="addPat()">Give Head Pat! ✨</button>
-
         <div class="admin-unlock" onclick="checkAdmin()">Admin Login</div>
     </div>
 
     <script>
-        let count = localStorage.getItem('patCount') ? parseInt(localStorage.getItem('patCount')) : 0;
-        const countDisplay = document.getElementById('count');
-        const patBtn = document.getElementById('patBtn');
+        // 1. REPLACE THESE WITH YOUR SUPABASE INFO
+        const SUPABASE_URL = 'https://hictxveoxvlmoypluojv.supabase.co/';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhpY3R4dmVveHZsbW95cGx1b2p2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjY0MjUwMzgsImV4cCI6MjA4MjAwMTAzOH0.JS34mtLHPSdos1OZWPy23cpI4wxfui74jQlWQBCayGQ';
+        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        // Update display on load
-        countDisplay.innerText = count;
+        let currentCount = 0;
 
-        function addPat() {
-            count++;
-            countDisplay.innerText = count;
-            localStorage.setItem('patCount', count);
+        // 2. Fetch the count from the Cloud on load
+        async function fetchCount() {
+            const { data, error } = await supabase
+                .from('stats')
+                .select('count')
+                .eq('id', 1)
+                .single();
+            
+            if (data) {
+                currentCount = data.count;
+                document.getElementById('count').innerText = currentCount;
+            }
+        }
 
-            // Add a little haptic/visual feedback
-            countDisplay.style.transform = "scale(1.2)";
-            setTimeout(() => countDisplay.style.transform = "scale(1)", 100);
+        // 3. Update the Cloud count
+        async function addPat() {
+            currentCount++;
+            document.getElementById('count').innerText = currentCount;
+
+            const { error } = await supabase
+                .from('stats')
+                .update({ count: currentCount })
+                .eq('id', 1);
+            
+            if (error) console.error("Update failed:", error);
         }
 
         function checkAdmin() {
-            const password = prompt("enter password:");
-            if (password === "iloveyou") { // Change this to your secret password!
-                patBtn.style.display = "inline-block";
-                alert("Hello Admin! You can now give pats.");
-            } else {
-                alert("Ruh Roh! Access Denied!!");
+            const password = prompt("Secret password:");
+            if (password === "iloveyou") {
+                document.getElementById('patBtn').style.display = "inline-block";
             }
         }
+
+        // Initial Load
+        fetchCount();
+        // Refresh count every 5 seconds so she sees updates live
+        setInterval(fetchCount, 5000);
     </script>
 </body>
-
 </html>
